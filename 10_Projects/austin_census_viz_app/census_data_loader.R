@@ -225,7 +225,7 @@ tracts_austin <- get_acs(
 ) %>% 
   st_transform(4326) %>% 
   st_intersection(austin_boundary) %>% 
-  select(GEOID, geometry)
+  select(GEOID, NAME, geometry)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 5. LOAD TRACT DATA (OPTIMIZED - ALL VARS AT ONCE) ----
@@ -259,13 +259,8 @@ zcta_data <- safe_get_parallel(
   vars = all_vars,
   geo = "zcta",
   geo_filter = zctas
-)
-
-zcta_clean <- zcta_data %>% 
+) %>% 
   mutate(zipcode = str_remove(NAME, "ZCTA5 ") %>% as.numeric())
-
-# zcta_all <- zcta_austin %>%
-#   right_join(zcta_clean, by = "zipcode")
 
 cat("✓ Loaded", nrow(zcta_data), "ZCTA records\n")
 
@@ -283,9 +278,11 @@ cat("✓ Loaded", nrow(zcta_data), "ZCTA records\n")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 7. SAVE DATA TO RDS ----
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+df_list <- list("tracts_data" = tracts_data,
+                "tracts_austin" = tracts_austin,
+                "zcta_data" = zcta_data,
+                "zcta_austin" = zcta_austin)
 
-saveRDS(list(tracts_data,
-              tracts_austin,
-              zcta_data,
-              zcta_austin),
+
+saveRDS(df_list,
      file = file.path(out_path, "austin_census_viz_data.RDS"))
