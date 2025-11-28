@@ -25,7 +25,7 @@ census_api_key(Sys.getenv("CENSUS_API_KEY"), install = FALSE, overwrite = TRUE)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Directories 
 root <- "/Users/nathanchesterman/Documents/GitHub/public/"
-out_path <- file.path(root, "datasets")
+out_path <- file.path(root, "20_Datasets", "austin_census_viz_app")
 
 years_to_pull <- 2009:2023
 zcta_years <- 2011:2023  # ZCTA data only available from 2011+
@@ -213,7 +213,7 @@ st_crs(zcta_austin) <- 4326
 
 cat("Loading tract boundaries (2023 only)...\n")
 # Only get geometry for most recent year
-tracts_sf <- get_acs(
+tracts_austin <- get_acs(
   geography = "tract",
   variables = "B01001_001",
   year = 2023,
@@ -231,7 +231,7 @@ tracts_sf <- get_acs(
 # 5. LOAD TRACT DATA (OPTIMIZED - ALL VARS AT ONCE) ----
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 cat("Loading tract census data for", length(years_to_pull), "years...\n")
-geo_ids <- tracts_sf$GEOID
+geo_ids <- tracts_austin$GEOID
 
 # Fetch all data with parallel processing
 tracts_data <- safe_get_parallel(
@@ -242,9 +242,9 @@ tracts_data <- safe_get_parallel(
 )
 
 # Join geometry only once
-tracts_yearly <- tracts_data %>%
-  left_join(tracts_sf, by = "GEOID") %>%
-  st_as_sf()
+# tracts_yearly <- tracts_data %>%
+#   left_join(tracts_sf, by = "GEOID") %>%
+#   st_as_sf()
 
 cat("✓ Loaded", nrow(tracts_data), "tract records\n")
 
@@ -264,8 +264,8 @@ zcta_data <- safe_get_parallel(
 zcta_clean <- zcta_data %>% 
   mutate(zipcode = str_remove(NAME, "ZCTA5 ") %>% as.numeric())
 
-zcta_all <- zcta_austin %>%
-  right_join(zcta_clean, by = "zipcode")
+# zcta_all <- zcta_austin %>%
+#   right_join(zcta_clean, by = "zipcode")
 
 cat("✓ Loaded", nrow(zcta_data), "ZCTA records\n")
 
@@ -273,18 +273,19 @@ cat("✓ Loaded", nrow(zcta_data), "ZCTA records\n")
 # 7. PRE-FILTER FOR FASTER RENDERING ----
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Pre-calculate simplified geometry for map
-tracts_current <- tracts_yearly %>% 
-  filter(year == max(years_to_pull)) %>%
-  select(GEOID, NAME, geometry) %>%
-  distinct()
+# tracts_current <- tracts_yearly %>% 
+#   filter(year == max(years_to_pull)) %>%
+#   select(GEOID, NAME, geometry) %>%
+#   distinct()
 
-cat("✓ Data loading complete!\n\n")
+# cat("✓ Data loading complete!\n\n")
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 7. SAVE DATA TO RDS ----
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-save(list = c("tracts_yearly", 
-              "tracts_current",
-              "zcta_all",
-              "zcta_austin"),
-     file = "austin_census_viz_data.RDS")
+
+saveRDS(list(tracts_data,
+              tracts_austin,
+              zcta_data,
+              zcta_austin),
+     file = file.path(out_path, "austin_census_viz_data.RDS"))
